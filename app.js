@@ -368,7 +368,7 @@
         return section;
     }
 
-    function renderResult(result, rank) {
+    function renderResult(result, rank, config) {
         const card = document.createElement("article");
         card.className = `result-card${rank === 1 ? " best" : ""}`;
 
@@ -400,6 +400,13 @@
             box.append(label, item);
             grid.append(box);
         });
+
+        const builderLink = document.createElement("a");
+        builderLink.className = "button button-quiet result-builder-link";
+        builderLink.href = WynnBuilderLink.createUrl(result.items, config.className, config.level);
+        builderLink.target = "_blank";
+        builderLink.rel = "noopener noreferrer";
+        builderLink.textContent = "Abrir no WynnBuilder";
 
         const details = document.createElement("details");
         details.className = "result-details";
@@ -463,7 +470,7 @@
         if (setDetails) body.append(setDetails);
         body.append(itemDetails);
         details.append(summary, body);
-        card.append(head, grid, details);
+        card.append(head, grid, builderLink, details);
         return card;
     }
 
@@ -490,7 +497,9 @@
             empty.append("Tente aumentar o nível, remover um item fixado ou reduzir os requisitos de skill points das peças.");
             list.append(empty);
         } else {
-            search.results.forEach((result, index) => list.append(renderResult(result, index + 1)));
+            search.results.forEach((result, index) =>
+                list.append(renderResult(result, index + 1, config))
+            );
         }
         const note = document.createElement("p");
         note.className = "method-note";

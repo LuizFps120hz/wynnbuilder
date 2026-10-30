@@ -239,6 +239,7 @@ form { display: grid; gap: 18px; }
 .result-rank strong { font-size: 13px; }
 .result-score { color: var(--accent); font-size: 13px; font-weight: 700; }
 .result-card > .gear-result-grid { padding: 15px 18px 0; }
+.result-builder-link { width: fit-content; margin: 12px 18px 0 auto; text-decoration: none; }
 .result-details { margin-top: 15px; border-top: 1px solid var(--line); }
 .result-details summary { display: flex; min-height: 46px; align-items: center; justify-content: center; cursor: pointer; color: var(--accent); font-size: 12px; font-weight: 680; list-style: none; }
 .result-details summary::-webkit-details-marker { display: none; }
