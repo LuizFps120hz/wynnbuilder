@@ -1,0 +1,10 @@
+{
+  "name": "wynnbuilder-build-finder",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Static equipment optimizer for Wynncraft builds",
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "GPL-3.0-only"
+}

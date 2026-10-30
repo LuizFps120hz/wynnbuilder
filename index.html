@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#111827">
+  <meta name="description" content="Monte builds de Wynncraft automaticamente com prioridades e requisitos de skill points.">
+  <title>Wynn Build Finder</title>
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="optimizer.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="./" aria-label="Wynn Build Finder, início">
+      <span class="brand-mark">W</span>
+      <span>Wynn <strong>Build Finder</strong></span>
+    </a>
+    <button id="share-button" class="button button-quiet" type="button" disabled>Compartilhar build</button>
+  </header>
+
+  <main class="page">
+    <section class="intro">
+      <p class="eyebrow">OTIMIZADOR DE BUILDS · WYNNCRAFT</p>
+      <h1>Você escolhe o objetivo.<br><span>O Finder monta o equipamento.</span></h1>
+      <p class="intro-copy">Defina a classe, o nível e os itens que quer manter. O otimizador procura combinações para as suas prioridades e verifica requisitos, bônus e ordem de equipagem dos skill points.</p>
+    </section>
+
+    <form id="build-form">
+      <section class="panel setup-panel" aria-labelledby="setup-title">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">01 · SUA BUILD</p>
+            <h2 id="setup-title">Classe e equipamento</h2>
+          </div>
+          <span id="data-status" class="status-pill">Carregando dados…</span>
+        </div>
+        <div class="basic-fields">
+          <label class="field">
+            <span>Classe</span>
+            <select id="class-name" name="className">
+              <option value="archer">Archer</option>
+              <option value="warrior">Warrior</option>
+              <option value="assassin">Assassin</option>
+              <option value="mage">Mage</option>
+              <option value="shaman">Shaman</option>
+            </select>
+          </label>
+          <label class="field level-field">
+            <span>Nível</span>
+            <input id="level" name="level" type="number" min="1" max="121" value="121" inputmode="numeric">
+            <small id="skillpoint-cap">200 skill points disponíveis</small>
+          </label>
+        </div>
+
+        <div class="subheading">
+          <h3>Itens para manter</h3>
+          <p>Deixe em branco para o Finder escolher. Você pode fixar qualquer peça.</p>
+        </div>
+        <div class="gear-grid">
+          <label class="field gear-field"><span>Capacete</span><input id="fixed-helmet" list="items-helmet" placeholder="Automático"><datalist id="items-helmet"></datalist></label>
+          <label class="field gear-field"><span>Peitoral</span><input id="fixed-chestplate" list="items-chestplate" placeholder="Automático"><datalist id="items-chestplate"></datalist></label>
+          <label class="field gear-field"><span>Calças</span><input id="fixed-leggings" list="items-leggings" placeholder="Automático"><datalist id="items-leggings"></datalist></label>
+          <label class="field gear-field"><span>Botas</span><input id="fixed-boots" list="items-boots" placeholder="Automático"><datalist id="items-boots"></datalist></label>
+          <label class="field gear-field"><span>Anel 1</span><input id="fixed-ring1" list="items-ring1" placeholder="Automático"><datalist id="items-ring1"></datalist></label>
+          <label class="field gear-field"><span>Anel 2</span><input id="fixed-ring2" list="items-ring2" placeholder="Automático"><datalist id="items-ring2"></datalist></label>
+          <label class="field gear-field"><span>Bracelete</span><input id="fixed-bracelet" list="items-bracelet" placeholder="Automático"><datalist id="items-bracelet"></datalist></label>
+          <label class="field gear-field"><span>Colar</span><input id="fixed-necklace" list="items-necklace" placeholder="Automático"><datalist id="items-necklace"></datalist></label>
+          <label class="field gear-field weapon-field"><span>Arma</span><input id="fixed-weapon" list="items-weapon" placeholder="Automática"><datalist id="items-weapon"></datalist></label>
+        </div>
+        <p class="helper-text">Digite parte do nome e selecione uma sugestão para fixar. O espaço vazio continua automático.</p>
+      </section>
+
+      <section class="panel priorities-panel" aria-labelledby="priorities-title">
+        <div class="section-heading">
+          <div>
+            <p class="step-label">02 · O QUE IMPORTA</p>
+            <h2 id="priorities-title">Prioridades</h2>
+          </div>
+          <span class="weight-hint">Peso de 0 a 5</span>
+        </div>
+        <p class="section-copy">Aumente o peso para valorizar mais um atributo. Peso 0 ignora esse atributo no ranking.</p>
+        <div class="priority-grid">
+          <label class="priority-row"><span><strong>Mana Regen</strong><small>Regeneração de mana</small></span><input name="weight-mr" type="number" min="0" max="5" step="1" value="3"></label>
+          <label class="priority-row"><span><strong>Spell Damage % geral</strong><small>Dano percentual universal de magia</small></span><input name="weight-sdPct" type="number" min="0" max="5" step="1" value="3"></label>
+          <label class="priority-row"><span><strong>Spell Damage Raw geral</strong><small>Dano fixo universal de magia</small></span><input name="weight-sdRaw" type="number" min="0" max="5" step="1" value="2"></label>
+          <label class="priority-row"><span><strong>Main Attack %</strong><small>Dano percentual do ataque básico</small></span><input name="weight-mdPct" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Main Attack Raw</strong><small>Dano fixo do ataque básico</small></span><input name="weight-mdRaw" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Health Regen %</strong><small>Regeneração percentual de vida</small></span><input name="weight-hprPct" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Health Regen Raw</strong><small>Regeneração fixa de vida</small></span><input name="weight-hprRaw" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Walk Speed</strong><small>Velocidade de movimento</small></span><input name="weight-spd" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Health</strong><small>Vida máxima</small></span><input name="weight-hpBonus" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Mana Steal</strong><small>Mana recuperada ao atacar</small></span><input name="weight-ms" type="number" min="0" max="5" step="1" value="0"></label>
+          <label class="priority-row"><span><strong>Life Steal</strong><small>Vida recuperada ao atacar</small></span><input name="weight-ls" type="number" min="0" max="5" step="1" value="0"></label>
+        </div>
+        <div class="skill-priority">
+          <div><strong>Skill points também contam</strong><small>Deixe como 0 se não quiser dar peso extra a esses bônus.</small></div>
+          <div class="skill-weight-grid">
+            <label>Força <input name="weight-str" type="number" min="0" max="5" value="0"></label>
+            <label>Destreza <input name="weight-dex" type="number" min="0" max="5" value="0"></label>
+            <label>Inteligência <input name="weight-int" type="number" min="0" max="5" value="0"></label>
+            <label>Defesa <input name="weight-def" type="number" min="0" max="5" value="0"></label>
+            <label>Agilidade <input name="weight-agi" type="number" min="0" max="5" value="0"></label>
+          </div>
+        </div>
+        <button id="optimize-button" class="button button-primary" type="submit" disabled>
+          <span>Encontrar builds</span><span aria-hidden="true">→</span>
+        </button>
+        <p id="form-error" class="form-error" role="alert" hidden></p>
+      </section>
+    </form>
+
+    <section id="results-section" class="results-section" aria-live="polite">
+      <div id="results-content"></div>
+    </section>
+    <footer>
+      <span>Projeto independente e não oficial.</span>
+      <a href="https://github.com/wynnbuilder/wynnbuilder.github.io" target="_blank" rel="noreferrer">Dados de itens: WynnBuilder</a>
+      <a href="https://docs.wynncraft.com/welcome" target="_blank" rel="noreferrer">Documentação Wynncraft</a>
+    </footer>
+  </main>
+</body>
+</html>
