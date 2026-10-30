@@ -282,6 +282,7 @@ form { display: grid; gap: 18px; }
 .item-requirements, .item-elements, .item-lore { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .item-lore { color: var(--subtle); }
 .item-tradability { margin: 8px 0 0; color: var(--accent); font-size: 10px; font-weight: 700; }
+.item-tradability.not-tradable { display: table; padding: 5px 8px; border: 1px solid rgb(255 115 115 / 45%); border-radius: 6px; background: rgb(255 85 85 / 12%); color: #ff8585; }
 .item-detail .detail-stat-grid { grid-template-columns: 1fr; }
 .empty-result { margin-top: 25px; padding: 22px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .empty-result strong { color: var(--text); }

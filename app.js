@@ -328,8 +328,9 @@
             section.append(lore);
         }
         const tradability = document.createElement("p");
-        tradability.className = "item-tradability";
-        tradability.textContent = WynnOptimizer.isTradable(item) ? "Tradable" : "Not tradable";
+        const isTradable = WynnOptimizer.isTradable(item);
+        tradability.className = `item-tradability${isTradable ? "" : " not-tradable"}`;
+        tradability.textContent = isTradable ? "Tradable" : "Not tradable";
         section.append(tradability);
         return section;
     }
