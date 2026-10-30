@@ -281,6 +281,7 @@ form { display: grid; gap: 18px; }
 .item-detail-heading span { flex: 0 0 auto; color: var(--subtle); font-size: 9px; }
 .item-requirements, .item-elements, .item-lore { margin: 7px 0 0; color: var(--muted); font-size: 10px; line-height: 1.5; }
 .item-lore { color: var(--subtle); }
+.item-tradability { margin: 8px 0 0; color: var(--accent); font-size: 10px; font-weight: 700; }
 .item-detail .detail-stat-grid { grid-template-columns: 1fr; }
 .empty-result { margin-top: 25px; padding: 22px; border: 1px solid var(--line); border-radius: 13px; color: var(--muted); font-size: 13px; line-height: 1.7; }
 .empty-result strong { color: var(--text); }

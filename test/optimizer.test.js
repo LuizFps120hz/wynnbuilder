@@ -21,6 +21,12 @@ test("skill points are capped at 200 and at level 121", () => {
     assert.equal(optimizer.skillPointsAtLevel(121), 200);
 });
 
+test("items marked untradable or quest-only are not tradable", () => {
+    assert.equal(optimizer.isTradable({ restrict: "untradable" }), false);
+    assert.equal(optimizer.isTradable({ restrict: "quest_item" }), false);
+    assert.equal(optimizer.isTradable({}), true);
+});
+
 test("a skill bonus on an item cannot satisfy that same item's equip requirement", () => {
     const gear = emptyGear();
     gear[2] = {

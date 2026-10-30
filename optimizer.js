@@ -35,6 +35,10 @@
         return Math.min(200, (safeLevel - 1) * 2);
     }
 
+    function isTradable(item) {
+        return item.restrict !== "untradable" && item.restrict !== "quest_item";
+    }
+
     function getSetMembership(sets) {
         const membership = new Map();
         for (const [setName, set] of Object.entries(sets || {})) {
@@ -368,6 +372,7 @@
         CLASS_WEAPONS,
         EQUIPMENT_SLOTS,
         skillPointsAtLevel,
+        isTradable,
         getBuildStats,
         findEquipPlan,
         optimize

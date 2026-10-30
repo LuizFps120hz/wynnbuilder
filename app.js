@@ -327,6 +327,10 @@
             lore.textContent = item.lore;
             section.append(lore);
         }
+        const tradability = document.createElement("p");
+        tradability.className = "item-tradability";
+        tradability.textContent = WynnOptimizer.isTradable(item) ? "Tradable" : "Not tradable";
+        section.append(tradability);
         return section;
     }
 
