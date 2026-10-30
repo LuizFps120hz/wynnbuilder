@@ -32,6 +32,61 @@
         def: ["Defesa", "weight-def"],
         agi: ["Agilidade", "weight-agi"]
     };
+    const SKILL_LABELS = {
+        str: "Força",
+        dex: "Destreza",
+        int: "Inteligência",
+        def: "Defesa",
+        agi: "Agilidade"
+    };
+    const ELEMENT_LABELS = {
+        a: "Ar",
+        e: "Terra",
+        f: "Fogo",
+        n: "Neutro",
+        r: "Arco-íris",
+        t: "Trovão",
+        w: "Água"
+    };
+    const STAT_LABELS = {
+        mr: "Mana Regen",
+        ms: "Mana Steal",
+        ls: "Life Steal",
+        sdPct: "Spell Damage %",
+        sdRaw: "Spell Damage Raw",
+        mdPct: "Main Attack %",
+        mdRaw: "Main Attack Raw",
+        damPct: "Damage %",
+        damRaw: "Damage Raw",
+        hprPct: "Health Regen %",
+        hprRaw: "Health Regen Raw",
+        hp: "Health",
+        hpBonus: "Health Bonus",
+        maxMana: "Maximum Mana",
+        spd: "Walk Speed",
+        atkSpd: "Attack Speed",
+        atkTier: "Attack Tier",
+        averageDps: "Average DPS",
+        slots: "Powder Slots",
+        critDamPct: "Critical Damage %",
+        healPct: "Healing Efficiency %",
+        poison: "Poison",
+        thorns: "Thorns",
+        expd: "XP Bonus %",
+        xpb: "XP Bonus",
+        lb: "Loot Bonus %",
+        jh: "Jump Height",
+        kb: "Knockback",
+        sprint: "Sprint",
+        sprintReg: "Sprint Regen",
+        slowEnemy: "Slow Enemy",
+        weakenEnemy: "Weaken Enemy"
+    };
+    const ITEM_METADATA = new Set([
+        "id", "name", "displayName", "category", "type", "tier", "lvl",
+        "classReq", "drop", "lore", "remapID", "icon", "emblem", "elements",
+        "quest", "ref", "restrict", "setName"
+    ]);
     const CLASS_NAMES = {
         archer: "Archer",
         warrior: "Warrior",
@@ -166,6 +221,148 @@
         return tag;
     }
 
+    function statLabel(key) {
+        if (STAT_LABELS[key]) return STAT_LABELS[key];
+        const elementMatch = key.match(/^([aefnrtw])(Dam|Def|Md|Sd)(Pct|Raw)?$/);
+        if (elementMatch) {
+            const [, element, stat, modifier = ""] = elementMatch;
+            const statName = stat === "Dam" ? "Damage" : stat === "Def" ? "Defense" :
+                stat === "Md" ? "Main Attack" : "Spell Damage";
+            const suffix = modifier === "Pct" ? " %" : modifier === "Raw" ? " Raw" : "";
+            return `${ELEMENT_LABELS[element]} ${statName}${suffix}`;
+        }
+        const skillMatch = key.match(/^(str|dex|int|def|agi)(Req)?$/);
+        if (skillMatch) {
+            return skillMatch[2] ? `Requisito de ${SKILL_LABELS[skillMatch[1]]}` : SKILL_LABELS[skillMatch[1]];
+        }
+        if (/^(sd|md|dam|hpr)Pct$/.test(key)) return `${STAT_LABELS[key.slice(0, -3)]} %`;
+        if (/^(sd|md|dam|hpr)Raw$/.test(key)) return `${STAT_LABELS[key.slice(0, -3)]} Raw`;
+        const skillBonusMatch = key.match(/^sp(Pct|Raw)([1-4])$/);
+        if (skillBonusMatch) {
+            return `Skill Point Bonus${skillBonusMatch[1] === "Pct" ? " %" : " Raw"} ${skillBonusMatch[2]}`;
+        }
+        return key
+            .replace(/([a-z])([A-Z0-9])/g, "$1 $2")
+            .replace(/([A-Z])([A-Z][a-z])/g, "$1 $2")
+            .replace(/Pct$/, "%")
+            .replace(/Raw$/, "Raw")
+            .replace(/^./, char => char.toLocaleUpperCase());
+    }
+
+    function formatStatValue(key, value) {
+        if (typeof value === "number") {
+            const sign = value > 0 ? "+" : "";
+            const suffix = key.includes("Pct") || key === "expd" || key === "lb" ? "%" : "";
+            return `${sign}${value}${suffix}`;
+        }
+        if (key === "atkTier" && value && typeof value === "object") {
+            const raw = Number(value.raw) || 0;
+            return `${raw > 0 ? "+" : ""}${raw}${value.static ? " (static)" : ""}`;
+        }
+        return String(value);
+    }
+
+    function renderStatGrid(stats) {
+        const grid = document.createElement("dl");
+        grid.className = "detail-stat-grid";
+        const entries = Object.entries(stats)
+            .filter(([key, value]) => {
+                if (key === "illegal" || value === 0 || value === null || value === undefined) return false;
+                if (ITEM_METADATA.has(key)) return false;
+                if (key.endsWith("Req")) return false;
+                return typeof value === "number" || typeof value === "string" ||
+                    (key === "atkTier" && value && typeof value === "object");
+            })
+            .sort(([a], [b]) => statLabel(a).localeCompare(statLabel(b)));
+        for (const [key, value] of entries) {
+            const row = document.createElement("div");
+            row.className = "detail-stat";
+            const name = document.createElement("dt");
+            name.textContent = statLabel(key);
+            const amount = document.createElement("dd");
+            amount.textContent = formatStatValue(key, value);
+            row.append(name, amount);
+            grid.append(row);
+        }
+        return grid;
+    }
+
+    function renderItemDetails(item, slot) {
+        const section = document.createElement("section");
+        section.className = "item-detail";
+        const heading = document.createElement("div");
+        heading.className = "item-detail-heading";
+        const title = document.createElement("h4");
+        title.textContent = `${SLOT_LABELS[slot]} · ${item.displayName}`;
+        const tier = document.createElement("span");
+        tier.textContent = `${item.tier || "Item"} · Nv. ${item.lvl}`;
+        heading.append(title, tier);
+        section.append(heading);
+
+        const requirements = WynnOptimizer.SKILLS
+            .filter(skill => Number(item[skill.req]) > 0)
+            .map(skill => `${skill.label}: ${item[skill.req]}`);
+        if (item.classReq) requirements.unshift(`Classe: ${CLASS_NAMES[item.classReq] || item.classReq}`);
+        if (requirements.length) {
+            const requirementNote = document.createElement("p");
+            requirementNote.className = "item-requirements";
+            requirementNote.textContent = `Requisitos: ${requirements.join(" · ")}`;
+            section.append(requirementNote);
+        }
+
+        if (Array.isArray(item.elements) && item.elements.length) {
+            const elements = document.createElement("p");
+            elements.className = "item-elements";
+            elements.textContent = `Elementos: ${item.elements.map(element =>
+                ELEMENT_LABELS[{ air: "a", earth: "e", fire: "f", neutral: "n", rainbow: "r", thunder: "t", water: "w" }[element] || ""] || element
+            ).join(", ")}`;
+            section.append(elements);
+        }
+
+        const stats = renderStatGrid(item);
+        if (stats.childElementCount) section.append(stats);
+        if (typeof item.lore === "string" && item.lore) {
+            const lore = document.createElement("p");
+            lore.className = "item-lore";
+            lore.textContent = item.lore;
+            section.append(lore);
+        }
+        return section;
+    }
+
+    function renderSetDetails(items) {
+        const counts = new Map();
+        for (const item of items) {
+            if (item.setName) counts.set(item.setName, (counts.get(item.setName) || 0) + 1);
+        }
+        const activeSets = [...counts].filter(([name]) => dataset.sets[name]);
+        if (!activeSets.length) return null;
+        const section = document.createElement("section");
+        section.className = "set-detail";
+        const heading = document.createElement("h3");
+        heading.textContent = "Bônus de conjunto";
+        section.append(heading);
+        for (const [name, count] of activeSets) {
+            const set = dataset.sets[name];
+            const bonus = set.bonuses?.[Math.min(count, set.bonuses.length) - 1] || {};
+            const block = document.createElement("div");
+            block.className = "set-bonus";
+            const title = document.createElement("strong");
+            title.textContent = `${name} · ${count} peça${count === 1 ? "" : "s"}`;
+            block.append(title);
+            const stats = renderStatGrid(bonus);
+            if (stats.childElementCount) block.append(stats);
+            else {
+                const note = document.createElement("p");
+                note.className = "item-requirements";
+                note.textContent = "Sem bônus numérico ativo.";
+                block.append(note);
+            }
+            section.append(block);
+        }
+        return section;
+    }
+
     function renderResult(result, rank) {
         const card = document.createElement("article");
         card.className = `result-card${rank === 1 ? " best" : ""}`;
@@ -185,8 +382,6 @@
         score.textContent = `Score ${result.score.toFixed(2)}`;
         head.append(rankBlock, score);
 
-        const body = document.createElement("div");
-        body.className = "result-body";
         const grid = document.createElement("div");
         grid.className = "gear-result-grid";
         SLOT_IDS.forEach((slot, index) => {
@@ -200,6 +395,13 @@
             box.append(label, item);
             grid.append(box);
         });
+
+        const details = document.createElement("details");
+        details.className = "result-details";
+        const summary = document.createElement("summary");
+        summary.textContent = "Abrir detalhes da build";
+        const body = document.createElement("div");
+        body.className = "result-body";
 
         const meta = document.createElement("div");
         meta.className = "result-meta";
@@ -243,8 +445,20 @@
             entry.append(name, value);
             breakdown.append(entry);
         }
-        body.append(grid, meta, breakdown);
-        card.append(head, body);
+        const itemDetails = document.createElement("div");
+        itemDetails.className = "item-detail-list";
+        SLOT_IDS.forEach((slot, index) => itemDetails.append(renderItemDetails(result.items[index], slot)));
+        const buildStats = document.createElement("section");
+        buildStats.className = "build-stats";
+        const buildStatsTitle = document.createElement("h3");
+        buildStatsTitle.textContent = "Atributos totais da build";
+        buildStats.append(buildStatsTitle, renderStatGrid(result.stats));
+        body.append(meta, breakdown, buildStats);
+        const setDetails = renderSetDetails(result.items);
+        if (setDetails) body.append(setDetails);
+        body.append(itemDetails);
+        details.append(summary, body);
+        card.append(head, grid, details);
         return card;
     }
 

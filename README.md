@@ -28,6 +28,7 @@ Envie os arquivos deste diretório para um repositório e selecione **Settings �
 - Para cada atributo priorizado, soma os valores dos itens e bônus de set. Os pesos são aplicados a valores normalizados pelo percentil 90 do catálogo para que percentuais, valores fixos e regeneração não fiquem em escalas incomparáveis.
 - Faz uma busca heurística em candidatos de cada espaço. Para manter a resposta rápida, limita candidatos por espaço e mantém uma beam de combinações; portanto, o ranking é uma aproximação e não promete o ótimo matemático global.
 - Antes de mostrar uma build, procura uma ordem para equipar as oito peças de armadura/acessórios e depois a arma. A verificação considera requisitos, bônus e penalidades de skill points, bônus de set e o limite de 100 pontos atribuídos por habilidade. Também limita o total de pontos pelo nível informado.
+- Cada combinação mostra um resumo do equipamento e permite abrir os detalhes da build, incluindo atributos totais, bônus de conjuntos, requisitos, identificações e lore das peças.
 - O score prioriza identificações genéricas de itens. Ainda não soma IDs de dano elemental específico nem reproduz o cálculo de dano, spell cycle, árvore de habilidades, powders, tomes, aspectos ou efeitos de habilidade do WynnBuilder.
 - O link de compartilhamento guarda classe, nível, prioridades e itens fixados no fragmento da URL. Nenhum dado é enviado a um servidor pelo app.
 
