@@ -27,6 +27,52 @@ test("items marked untradable or quest-only are not tradable", () => {
     assert.equal(optimizer.isTradable({}), true);
 });
 
+test("attribute constraints accept values at the minimum and reject values below it", () => {
+    assert.equal(optimizer.satisfiesConstraints({ mr: 0, hprRaw: 2 }, {
+        mr: 0,
+        hprRaw: 0
+    }), true);
+    assert.equal(optimizer.satisfiesConstraints({ mr: -1, hprRaw: 2 }, {
+        mr: 0,
+        hprRaw: 0
+    }), false);
+    assert.equal(optimizer.satisfiesConstraints({ mr: 3 }, {}), true);
+});
+
+test("intelligent mode ranks equipment health and rejects builds below configured limits", async () => {
+    const item = (id, category, type, stats = {}) => ({
+        id,
+        name: id,
+        displayName: id,
+        category,
+        type,
+        lvl: 1,
+        ...stats
+    });
+    const items = [
+        item("high-health-invalid", "armor", "helmet", { hp: 100, hprRaw: -1 }),
+        item("valid-helmet", "armor", "helmet", { hp: 10 }),
+        item("chest", "armor", "chestplate"),
+        item("legs", "armor", "leggings"),
+        item("boots", "armor", "boots"),
+        item("ring", "accessory", "ring"),
+        item("bracelet", "accessory", "bracelet"),
+        item("necklace", "accessory", "necklace"),
+        item("weapon", "weapon", "bow")
+    ];
+    const result = await optimizer.optimize({ items, sets: {} }, {
+        className: "archer",
+        level: 121,
+        fixed: {},
+        weights: {},
+        mode: "intelligent",
+        constraints: { mr: 0, ms: 0, hprRaw: 0 }
+    });
+    assert.ok(result.results.length > 0);
+    assert.equal(result.results[0].items[0].name, "valid-helmet");
+    assert.equal(result.results[0].score, 10);
+});
+
 test("a skill bonus on an item cannot satisfy that same item's equip requirement", () => {
     const gear = emptyGear();
     gear[2] = {

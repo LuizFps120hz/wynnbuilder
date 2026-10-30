@@ -76,10 +76,41 @@
         <div class="section-heading">
           <div>
             <p class="step-label">02 · O QUE IMPORTA</p>
-            <h2 id="priorities-title">Prioridades</h2>
+            <h2 id="priorities-title">Como otimizar</h2>
           </div>
           <span class="weight-hint">Peso de 0 a 5</span>
         </div>
+        <label class="field mode-field">
+          <span>Modo de otimização</span>
+          <select id="optimization-mode" name="mode">
+            <option value="manual">Manual — usar apenas meus pesos</option>
+            <option value="assisted">Assistido — meus pesos com filtros</option>
+            <option value="intelligent">Inteligente — priorizar vida máxima</option>
+          </select>
+        </label>
+        <p id="mode-description" class="section-copy mode-description">Você controla o ranking pelos pesos; nenhum filtro adicional de atributos é aplicado.</p>
+        <fieldset id="constraints-panel" class="constraints-panel" hidden>
+          <legend>Limites mínimos dos atributos</legend>
+          <p>Esses limites são requisitos, não preferências. Se nenhuma build atender, ajuste ou remova um limite.</p>
+          <div class="constraint-grid">
+            <label class="constraint-row">
+              <span>Mana Regen</span>
+              <select name="constraint-mr"><option value="none">Sem limite</option><option value="nonnegative">Não negativo</option><option value="minimum">Mínimo personalizado</option></select>
+              <input name="constraint-mr-min" type="number" step="1" value="0" aria-label="Mínimo de Mana Regen" hidden>
+            </label>
+            <label class="constraint-row">
+              <span>Mana Steal</span>
+              <select name="constraint-ms"><option value="none">Sem limite</option><option value="nonnegative">Não negativo</option><option value="minimum">Mínimo personalizado</option></select>
+              <input name="constraint-ms-min" type="number" step="1" value="0" aria-label="Mínimo de Mana Steal" hidden>
+            </label>
+            <label class="constraint-row">
+              <span>Health Regen Raw</span>
+              <select name="constraint-hprRaw"><option value="none">Sem limite</option><option value="nonnegative">Não negativo</option><option value="minimum">Mínimo personalizado</option></select>
+              <input name="constraint-hprRaw-min" type="number" step="1" value="0" aria-label="Mínimo de Health Regen Raw" hidden>
+            </label>
+          </div>
+        </fieldset>
+        <div id="manual-priorities">
         <p class="section-copy">Aumente o peso para valorizar mais um atributo. Peso 0 ignora esse atributo no ranking.</p>
         <div class="priority-grid">
           <label class="priority-row"><span><strong>Mana Regen</strong><small>Regeneração de mana</small></span><input name="weight-mr" type="number" min="0" max="5" step="1" value="3"></label>
@@ -103,6 +134,7 @@
             <label>Defesa <input name="weight-def" type="number" min="0" max="5" value="0"></label>
             <label>Agilidade <input name="weight-agi" type="number" min="0" max="5" value="0"></label>
           </div>
+        </div>
         </div>
         <button id="optimize-button" class="button button-primary" type="submit" disabled>
           <span>Encontrar builds</span><span aria-hidden="true">→</span>

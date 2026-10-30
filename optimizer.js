@@ -119,6 +119,17 @@
         return { score, breakdown };
     }
 
+    function satisfiesConstraints(stats, constraints) {
+        for (const [key, rawMinimum] of Object.entries(constraints || {})) {
+            const minimum = Number(rawMinimum);
+            if (!Number.isFinite(minimum)) {
+                throw new Error(`Limite inválido para o atributo ${key}.`);
+            }
+            if ((Number(stats[key]) || 0) < minimum) return false;
+        }
+        return true;
+    }
+
     function requiredBaseEstimate(items, sets) {
         const stats = getBuildStats(items, sets);
         let points = 0;
@@ -286,31 +297,59 @@
         return best;
     }
 
-    function makeState(items, sets, weights, scales) {
+    function makeState(items, sets, config, scales) {
         const stats = getBuildStats(items, sets);
-        const scored = scoreStats(stats, weights, scales);
+        const scored = config.mode === "intelligent"
+            ? {
+                score: (Number(stats.hp) || 0) + (Number(stats.hpBonus) || 0),
+                breakdown: {
+                    hp: Number(stats.hp) || 0,
+                    hpBonus: Number(stats.hpBonus) || 0
+                }
+            }
+            : scoreStats(stats, config.weights, scales);
         const skillCost = requiredBaseEstimate(items, sets);
+        const constraintPenalty = Object.entries(config.constraints || {}).reduce((penalty, [key, minimum]) =>
+            penalty + Math.max(0, Number(minimum) - (Number(stats[key]) || 0)) * 20,
+        0);
         return {
             items,
             stats,
             score: scored.score,
             breakdown: scored.breakdown,
-            heuristic: scored.score - skillCost * 0.045
+            heuristic: scored.score - skillCost * 0.045 - constraintPenalty
         };
     }
 
     async function optimize(data, config) {
+        const mode = config.mode || "manual";
+        if (!["manual", "assisted", "intelligent"].includes(mode)) {
+            throw new Error("Modo de otimização inválido.");
+        }
+        const constraints = Object.fromEntries(Object.entries(config.constraints || {}).map(([key, value]) => {
+            const minimum = Number(value);
+            if (!Number.isFinite(minimum)) {
+                throw new Error(`Limite inválido para o atributo ${key}.`);
+            }
+            return [key, minimum];
+        }));
+        const weights = mode === "intelligent"
+            ? { hp: 1, hpBonus: 1 }
+            : config.weights;
+        config = { ...config, mode, weights, constraints };
         const availablePoints = skillPointsAtLevel(config.level);
         const membership = getSetMembership(data.sets);
         const items = data.items.map(item => {
             item.setName = membership.get(item.name) || null;
             return item;
         });
-        const priorityKeys = Object.keys(config.weights);
-        if (!priorityKeys.some(key => Number(config.weights[key]) > 0)) {
+        const priorityKeys = Object.keys(weights);
+        if (mode !== "intelligent" && !priorityKeys.some(key => Number(weights[key]) > 0)) {
             throw new Error("Escolha ao menos uma prioridade com peso maior que zero.");
         }
-        const scales = computeScales(items, data.sets, priorityKeys);
+        const scales = mode === "intelligent"
+            ? { hp: 1, hpBonus: 1 }
+            : computeScales(items, data.sets, priorityKeys);
         const slots = Array.from({ length: 9 }, (_, i) => i).map(i =>
             getCandidates({ items, sets: data.sets }, i === 8 ? "weapon" : i, config, membership, scales)
         );
@@ -321,7 +360,7 @@
             for (const state of beam) {
                 for (const item of candidates) {
                     const chosen = state.items.concat(item);
-                    const evaluated = makeState(chosen, data.sets, config.weights, scales);
+                    const evaluated = makeState(chosen, data.sets, config, scales);
                     const key = chosen.map(entry => entry.id).join("-");
                     const current = next.get(key);
                     if (!current || evaluated.heuristic > current.heuristic) next.set(key, evaluated);
@@ -336,6 +375,7 @@
 
         const results = [];
         for (const state of beam) {
+            if (!satisfiesConstraints(state.stats, config.constraints)) continue;
             const equipment = state.items.slice(0, 8);
             const weapon = state.items[8];
             const plan = findEquipPlan(equipment, weapon, data.sets, availablePoints);
@@ -374,6 +414,7 @@
         skillPointsAtLevel,
         isTradable,
         getBuildStats,
+        satisfiesConstraints,
         findEquipPlan,
         optimize
     };

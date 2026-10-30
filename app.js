@@ -97,14 +97,52 @@
     const form = document.getElementById("build-form");
     const levelInput = document.getElementById("level");
     const classInput = document.getElementById("class-name");
+    const modeInput = document.getElementById("optimization-mode");
     const submitButton = document.getElementById("optimize-button");
     const shareButton = document.getElementById("share-button");
     const dataStatus = document.getElementById("data-status");
     const formError = document.getElementById("form-error");
     const resultsContent = document.getElementById("results-content");
+    const constraintsPanel = document.getElementById("constraints-panel");
+    const manualPriorities = document.getElementById("manual-priorities");
+    const modeDescription = document.getElementById("mode-description");
+    const weightHint = document.querySelector(".weight-hint");
+    const initializedModes = new Set(["manual"]);
     let dataset = null;
     let lastConfig = null;
     let lastResult = null;
+
+    function syncModeUI() {
+        const mode = modeInput.value;
+        const showConstraints = mode !== "manual";
+        constraintsPanel.hidden = !showConstraints;
+        manualPriorities.hidden = mode === "intelligent";
+        weightHint.hidden = mode === "intelligent";
+        if (mode === "manual") {
+            modeDescription.textContent = "Você controla o ranking pelos pesos; nenhum filtro adicional de atributos é aplicado.";
+        } else if (mode === "assisted") {
+            modeDescription.textContent = "Seus pesos continuam definindo o ranking. Os limites abaixo eliminam builds que não os atendam.";
+        } else {
+            modeDescription.textContent = "Busca maximizar a vida fornecida pelos equipamentos. É um indicador de vida, não EHP: o catálogo não inclui os dados de mitigação necessários para calcular vida efetiva.";
+        }
+        for (const stat of ["mr", "ms", "hprRaw"]) {
+            const select = form.elements.namedItem(`constraint-${stat}`);
+            const minimum = form.elements.namedItem(`constraint-${stat}-min`);
+            minimum.hidden = select.value !== "minimum" || !showConstraints;
+        }
+    }
+
+    function initializeModeConstraints(mode) {
+        if (initializedModes.has(mode)) return;
+        if (mode === "assisted") {
+            form.elements.namedItem("constraint-hprRaw").value = "nonnegative";
+        } else if (mode === "intelligent") {
+            for (const stat of ["mr", "ms", "hprRaw"]) {
+                form.elements.namedItem(`constraint-${stat}`).value = "nonnegative";
+            }
+        }
+        initializedModes.add(mode);
+    }
 
     function setError(message) {
         formError.textContent = message;
@@ -162,8 +200,16 @@
         if (!Number.isInteger(level) || level < 1 || level > 121) {
             throw new Error("O nível precisa ser um número inteiro entre 1 e 121.");
         }
+        const mode = modeInput.value;
+        if (!["manual", "assisted", "intelligent"].includes(mode)) {
+            throw new Error("Escolha um modo de otimização válido.");
+        }
         const weights = {};
         for (const [stat, [, inputName]] of Object.entries(PRIORITIES)) {
+            if (mode === "intelligent") {
+                weights[stat] = 0;
+                continue;
+            }
             const input = form.elements.namedItem(inputName);
             const value = Number(input.value);
             if (!Number.isInteger(value) || value < 0 || value > 5) {
@@ -171,15 +217,33 @@
             }
             weights[stat] = (weights[stat] || 0) + value;
         }
-        if (!Object.values(weights).some(weight => weight > 0)) {
+        if (mode !== "intelligent" && !Object.values(weights).some(weight => weight > 0)) {
             throw new Error("Escolha ao menos uma prioridade com peso maior que zero.");
+        }
+        const constraints = {};
+        if (mode !== "manual") {
+            for (const stat of ["mr", "ms", "hprRaw"]) {
+                const constraintMode = form.elements.namedItem(`constraint-${stat}`).value;
+                if (constraintMode === "none") continue;
+                const minimumInput = form.elements.namedItem(`constraint-${stat}-min`);
+                const minimum = constraintMode === "nonnegative"
+                    ? 0
+                    : Number(minimumInput.value);
+                if (constraintMode === "minimum" && !minimumInput.value.trim()) {
+                    throw new Error(`Informe um limite válido para ${PRIORITIES[stat][0]}.`);
+                }
+                if (!Number.isFinite(minimum)) {
+                    throw new Error(`Informe um limite válido para ${PRIORITIES[stat][0]}.`);
+                }
+                constraints[stat] = minimum;
+            }
         }
         const fixed = {};
         for (const slot of SLOT_IDS) {
             const id = slot === "ring1" || slot === "ring2" ? `fixed-${slot}` : `fixed-${slot}`;
             fixed[slot] = document.getElementById(id).value.trim();
         }
-        return { className: classInput.value, level, fixed, weights };
+        return { className: classInput.value, level, fixed, weights, mode, constraints };
     }
 
     function encodeConfig(config) {
@@ -211,6 +275,27 @@
             const value = Number(config.weights?.[stat]) || 0;
             form.elements.namedItem(inputName).value = String(Math.max(0, Math.min(5, value)));
         }
+        modeInput.value = ["manual", "assisted", "intelligent"].includes(config.mode)
+            ? config.mode
+            : "manual";
+        for (const stat of ["mr", "ms", "hprRaw"]) {
+            const savedMinimum = config.constraints?.[stat];
+            const select = form.elements.namedItem(`constraint-${stat}`);
+            const minimum = form.elements.namedItem(`constraint-${stat}-min`);
+            if (savedMinimum === undefined) {
+                select.value = (modeInput.value === "intelligent" ||
+                    (stat === "hprRaw" && modeInput.value === "assisted"))
+                    ? "nonnegative"
+                    : "none";
+            } else if (Number(savedMinimum) === 0) {
+                select.value = "nonnegative";
+            } else {
+                select.value = "minimum";
+                minimum.value = String(savedMinimum);
+            }
+        }
+        initializedModes.add(modeInput.value);
+        syncModeUI();
         updateSkillpointCap();
     }
 
@@ -384,7 +469,9 @@
         rankBlock.append(number, title);
         const score = document.createElement("span");
         score.className = "result-score";
-        score.textContent = `Score ${result.score.toFixed(2)}`;
+        score.textContent = config.mode === "intelligent"
+            ? `Vida dos equipamentos ${result.score.toLocaleString("pt-BR")}`
+            : `Score ${result.score.toFixed(2)}`;
         head.append(rankBlock, score);
 
         const grid = document.createElement("div");
@@ -446,8 +533,11 @@
 
         const breakdown = document.createElement("div");
         breakdown.className = "breakdown";
-        for (const [stat, [label]] of Object.entries(PRIORITIES)) {
-            const weight = lastConfig.weights[stat];
+        const breakdownEntries = config.mode === "intelligent"
+            ? [["hp", "Health"], ["hpBonus", "Health Bonus"]]
+            : Object.entries(PRIORITIES).map(([stat, [label]]) => [stat, label]);
+        for (const [stat, label] of breakdownEntries) {
+            const weight = config.mode === "intelligent" ? 1 : lastConfig.weights[stat];
             if (!weight) continue;
             const entry = document.createElement("div");
             const name = document.createElement("span");
@@ -494,7 +584,9 @@
             const titleText = document.createElement("strong");
             titleText.textContent = "Não encontrei uma combinação válida entre os candidatos avaliados.";
             empty.append(titleText, document.createElement("br"));
-            empty.append("Tente aumentar o nível, remover um item fixado ou reduzir os requisitos de skill points das peças.");
+            empty.append(Object.keys(config.constraints || {}).length
+                ? "Os limites mínimos ativos também podem ter excluído as combinações. Tente reduzi-los ou removê-los."
+                : "Tente aumentar o nível, remover um item fixado ou reduzir os requisitos de skill points das peças.");
             list.append(empty);
         } else {
             search.results.forEach((result, index) =>
@@ -503,7 +595,7 @@
         }
         const note = document.createElement("p");
         note.className = "method-note";
-        note.textContent = `O validador procura uma ordem de equipagem, considera os bônus e penalidades de skill points, bônus de sets e limite de 100 pontos atribuídos por habilidade. Busca heurística sobre candidatos filtrados (até ${search.candidateCounts.join(" / ")} por espaço); não garante o ótimo global. O score considera IDs genéricos, não dano elemental específico, ciclo de spells nem DPS calculado.`;
+        note.textContent = `${config.mode === "intelligent" ? "O objetivo é maximizar a soma dos atributos de vida fornecidos pelos equipamentos; isso não representa EHP, pois não calcula vida base nem mitigação de dano. " : ""}O validador procura uma ordem de equipagem, considera os bônus e penalidades de skill points, bônus de sets e limite de 100 pontos atribuídos por habilidade. Busca heurística sobre candidatos filtrados (até ${search.candidateCounts.join(" / ")} por espaço); não garante o ótimo global. O score manual/assistido considera IDs genéricos, não dano elemental específico, ciclo de spells nem DPS calculado.`;
         resultsContent.append(header, list, note);
         document.getElementById("results-section").scrollIntoView({ behavior: "smooth", block: "start" });
     }
@@ -583,10 +675,18 @@
         refreshDatalists();
     });
     classInput.addEventListener("change", refreshDatalists);
+    modeInput.addEventListener("change", () => {
+        initializeModeConstraints(modeInput.value);
+        syncModeUI();
+    });
+    for (const stat of ["mr", "ms", "hprRaw"]) {
+        form.elements.namedItem(`constraint-${stat}`).addEventListener("change", syncModeUI);
+    }
     for (const slot of SLOT_IDS) {
         document.getElementById(`fixed-${slot}`).addEventListener("input", () => refreshDatalists(slot));
     }
     shareButton.addEventListener("click", shareBuild);
     updateSkillpointCap();
+    syncModeUI();
     loadData();
 })();
