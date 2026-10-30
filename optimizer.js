@@ -173,13 +173,21 @@
         }
         if (!items.length) throw new Error(`Não há itens disponíveis para o espaço ${slot} nesse nível.`);
 
-        const weights = config.weights;
+        const weights = config.weights || {};
         const ranked = items.map(item => {
             const itemScore = scoreStats(item, weights, scales).score;
+            const healthScore = (Number(item.hp) || 0) + (Number(item.hpBonus) || 0);
             const skillBonus = SKILLS.reduce((sum, skill) => sum + (Number(item[skill.key]) || 0), 0);
             const requirements = SKILLS.reduce((sum, skill) => sum + (Number(item[skill.req]) || 0), 0);
-            return { item, score: itemScore + skillBonus * 0.025 - requirements * 0.012 };
-        }).sort((a, b) => b.score - a.score);
+            return {
+                item,
+                score: itemScore + skillBonus * 0.025 - requirements * 0.012,
+                healthScore,
+                preferenceScore: itemScore
+            };
+        }).sort((a, b) => config.mode === "intelligent"
+            ? b.healthScore - a.healthScore || b.preferenceScore - a.preferenceScore || b.score - a.score
+            : b.score - a.score);
         const selected = new Map();
         const keep = item => selected.set(item.id, item);
         for (const entry of ranked.slice(0, 38)) keep(entry.item);
@@ -308,6 +316,9 @@
                 }
             }
             : scoreStats(stats, config.weights, scales);
+        const preferenceScored = config.mode === "intelligent"
+            ? scoreStats(stats, config.weights, scales)
+            : scored;
         const skillCost = requiredBaseEstimate(items, sets);
         const constraintPenalty = Object.entries(config.constraints || {}).reduce((penalty, [key, minimum]) =>
             penalty + Math.max(0, Number(minimum) - (Number(stats[key]) || 0)) * 20,
@@ -317,6 +328,8 @@
             stats,
             score: scored.score,
             breakdown: scored.breakdown,
+            preferenceScore: preferenceScored.score,
+            preferenceBreakdown: preferenceScored.breakdown,
             heuristic: scored.score - skillCost * 0.045 - constraintPenalty
         };
     }
@@ -333,9 +346,7 @@
             }
             return [key, minimum];
         }));
-        const weights = mode === "intelligent"
-            ? { hp: 1, hpBonus: 1 }
-            : config.weights;
+        const weights = config.weights || {};
         config = { ...config, mode, weights, constraints };
         const availablePoints = skillPointsAtLevel(config.level);
         const membership = getSetMembership(data.sets);
@@ -343,13 +354,14 @@
             item.setName = membership.get(item.name) || null;
             return item;
         });
-        const priorityKeys = Object.keys(weights);
+        const priorityKeys = [...new Set([
+            ...Object.keys(weights),
+            ...(mode === "intelligent" ? ["hp", "hpBonus"] : [])
+        ])];
         if (mode !== "intelligent" && !priorityKeys.some(key => Number(weights[key]) > 0)) {
             throw new Error("Escolha ao menos uma prioridade com peso maior que zero.");
         }
-        const scales = mode === "intelligent"
-            ? { hp: 1, hpBonus: 1 }
-            : computeScales(items, data.sets, priorityKeys);
+        const scales = computeScales(items, data.sets, priorityKeys);
         const slots = Array.from({ length: 9 }, (_, i) => i).map(i =>
             getCandidates({ items, sets: data.sets }, i === 8 ? "weapon" : i, config, membership, scales)
         );
@@ -368,7 +380,11 @@
             }
             const width = next.size > 2000 ? 150 : 600;
             beam = [...next.values()]
-                .sort((a, b) => b.heuristic - a.heuristic)
+                .sort((a, b) => mode === "intelligent"
+                    ? b.score - a.score ||
+                        b.preferenceScore - a.preferenceScore ||
+                        b.heuristic - a.heuristic
+                    : b.heuristic - a.heuristic)
                 .slice(0, width);
             await new Promise(resolve => setTimeout(resolve, 0));
         }
@@ -385,6 +401,8 @@
                 stats: state.stats,
                 score: state.score,
                 breakdown: state.breakdown,
+                preferenceScore: state.preferenceScore,
+                preferenceBreakdown: state.preferenceBreakdown,
                 assigned: plan.assigned,
                 equipOrder: plan.order,
                 availablePoints
@@ -392,6 +410,7 @@
         }
         results.sort((a, b) =>
             b.score - a.score ||
+            b.preferenceScore - a.preferenceScore ||
             a.assigned.reduce((sum, value) => sum + value, 0) -
                 b.assigned.reduce((sum, value) => sum + value, 0)
         );

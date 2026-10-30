@@ -52,6 +52,7 @@ test("intelligent mode ranks equipment health and rejects builds below configure
     const items = [
         item("high-health-invalid", "armor", "helmet", { hp: 100, hprRaw: -1 }),
         item("valid-helmet", "armor", "helmet", { hp: 10 }),
+        item("preferred-helmet", "armor", "helmet", { hp: 10, mr: 4 }),
         item("chest", "armor", "chestplate"),
         item("legs", "armor", "leggings"),
         item("boots", "armor", "boots"),
@@ -64,13 +65,14 @@ test("intelligent mode ranks equipment health and rejects builds below configure
         className: "archer",
         level: 121,
         fixed: {},
-        weights: {},
+        weights: { mr: 1 },
         mode: "intelligent",
         constraints: { mr: 0, ms: 0, hprRaw: 0 }
     });
     assert.ok(result.results.length > 0);
-    assert.equal(result.results[0].items[0].name, "valid-helmet");
+    assert.equal(result.results[0].items[0].name, "preferred-helmet");
     assert.equal(result.results[0].score, 10);
+    assert.ok(result.results[0].preferenceScore > 0);
 });
 
 test("a skill bonus on an item cannot satisfy that same item's equip requirement", () => {

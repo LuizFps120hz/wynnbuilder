@@ -116,14 +116,14 @@
         const mode = modeInput.value;
         const showConstraints = mode !== "manual";
         constraintsPanel.hidden = !showConstraints;
-        manualPriorities.hidden = mode === "intelligent";
-        weightHint.hidden = mode === "intelligent";
+        manualPriorities.hidden = false;
+        weightHint.hidden = false;
         if (mode === "manual") {
             modeDescription.textContent = "Você controla o ranking pelos pesos; nenhum filtro adicional de atributos é aplicado.";
         } else if (mode === "assisted") {
             modeDescription.textContent = "Seus pesos continuam definindo o ranking. Os limites abaixo eliminam builds que não os atendam.";
         } else {
-            modeDescription.textContent = "Busca maximizar a vida fornecida pelos equipamentos. É um indicador de vida, não EHP: o catálogo não inclui os dados de mitigação necessários para calcular vida efetiva.";
+            modeDescription.textContent = "Busca maximizar a vida fornecida pelos equipamentos; seus pesos continuam ativos como critério secundário. É um indicador de vida, não EHP: o catálogo não inclui os dados de mitigação necessários para calcular vida efetiva.";
         }
         for (const stat of ["mr", "ms", "hprRaw"]) {
             const select = form.elements.namedItem(`constraint-${stat}`);
@@ -206,10 +206,6 @@
         }
         const weights = {};
         for (const [stat, [, inputName]] of Object.entries(PRIORITIES)) {
-            if (mode === "intelligent") {
-                weights[stat] = 0;
-                continue;
-            }
             const input = form.elements.namedItem(inputName);
             const value = Number(input.value);
             if (!Number.isInteger(value) || value < 0 || value > 5) {
@@ -534,16 +530,26 @@
         const breakdown = document.createElement("div");
         breakdown.className = "breakdown";
         const breakdownEntries = config.mode === "intelligent"
-            ? [["hp", "Health"], ["hpBonus", "Health Bonus"]]
+            ? [
+                ["hp", "Health"],
+                ["hpBonus", "Health Bonus"],
+                ...Object.entries(PRIORITIES).map(([stat, [label]]) => [stat, `${label} · desempate`])
+            ]
             : Object.entries(PRIORITIES).map(([stat, [label]]) => [stat, label]);
         for (const [stat, label] of breakdownEntries) {
-            const weight = config.mode === "intelligent" ? 1 : lastConfig.weights[stat];
+            const weight = config.mode === "intelligent" && (stat === "hp" || stat === "hpBonus")
+                ? 1
+                : lastConfig.weights[stat];
             if (!weight) continue;
             const entry = document.createElement("div");
             const name = document.createElement("span");
             name.textContent = label;
             const value = document.createElement("strong");
-            value.textContent = `${result.breakdown[stat] >= 0 ? "+" : ""}${result.breakdown[stat].toFixed(2)}`;
+            const contribution = config.mode === "intelligent" &&
+                stat !== "hp" && stat !== "hpBonus"
+                ? result.preferenceBreakdown[stat]
+                : result.breakdown[stat];
+            value.textContent = `${contribution >= 0 ? "+" : ""}${contribution.toFixed(2)}`;
             entry.append(name, value);
             breakdown.append(entry);
         }
