@@ -147,6 +147,7 @@ form { display: grid; gap: 18px; }
 
 .priorities-panel .section-heading { margin-bottom: 8px; }
 .section-copy { margin-bottom: 17px; }
+.priority-subheading { margin-top: 21px; }
 .mode-field { max-width: 430px; margin-bottom: 10px; }
 .mode-description { margin-bottom: 16px; }
 .constraints-panel {
@@ -299,6 +300,8 @@ form { display: grid; gap: 18px; }
 .detail-stat { display: flex; justify-content: space-between; gap: 8px; padding: 8px 9px; border-radius: 7px; background: #0e1723; font-size: 10px; }
 .detail-stat dt { color: var(--muted); }
 .detail-stat dd { margin: 0; color: #e5f7f2; font-weight: 650; text-align: right; }
+.detail-stat dd.positive { color: #6de0a5; }
+.detail-stat dd.negative { color: #ff8585; }
 .set-bonus { margin-top: 8px; padding: 10px; border: 1px solid #263549; border-radius: 9px; }
 .set-bonus > strong { display: block; margin-bottom: 8px; color: #e6edf6; font-size: 11px; }
 .item-detail-list { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 9px; margin-top: 19px; }

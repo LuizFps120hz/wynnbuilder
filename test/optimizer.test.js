@@ -75,6 +75,38 @@ test("intelligent mode ranks equipment health and rejects builds below configure
     assert.ok(result.results[0].preferenceScore > 0);
 });
 
+test("XP bonus can be prioritized when ranking builds", async () => {
+    const item = (id, category, type, stats = {}) => ({
+        id,
+        name: id,
+        displayName: id,
+        category,
+        type,
+        lvl: 1,
+        ...stats
+    });
+    const items = [
+        item("low-xp-helmet", "armor", "helmet", { xpb: 5 }),
+        item("high-xp-helmet", "armor", "helmet", { xpb: 50 }),
+        item("chest", "armor", "chestplate"),
+        item("legs", "armor", "leggings"),
+        item("boots", "armor", "boots"),
+        item("ring", "accessory", "ring"),
+        item("bracelet", "accessory", "bracelet"),
+        item("necklace", "accessory", "necklace"),
+        item("weapon", "weapon", "bow")
+    ];
+    const result = await optimizer.optimize({ items, sets: {} }, {
+        className: "archer",
+        level: 121,
+        fixed: {},
+        weights: { xpb: 5 },
+        mode: "manual"
+    });
+    assert.ok(result.results.length > 0);
+    assert.equal(result.results[0].items[0].name, "high-xp-helmet");
+});
+
 test("a skill bonus on an item cannot satisfy that same item's equip requirement", () => {
     const gear = emptyGear();
     gear[2] = {

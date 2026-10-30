@@ -26,6 +26,20 @@
         hpBonus: ["Health", "weight-hpBonus"],
         ms: ["Mana Steal", "weight-ms"],
         ls: ["Life Steal", "weight-ls"],
+        damPct: ["Damage %", "weight-damPct"],
+        damRaw: ["Damage Raw", "weight-damRaw"],
+        maxMana: ["Maximum Mana", "weight-maxMana"],
+        critDamPct: ["Critical Damage %", "weight-critDamPct"],
+        healPct: ["Healing Efficiency %", "weight-healPct"],
+        expd: ["XP Bonus %", "weight-expd"],
+        xpb: ["XP Bonus", "weight-xpb"],
+        lb: ["Loot Bonus %", "weight-lb"],
+        poison: ["Poison", "weight-poison"],
+        thorns: ["Thorns", "weight-thorns"],
+        jh: ["Jump Height", "weight-jh"],
+        sprint: ["Sprint", "weight-sprint"],
+        sprintReg: ["Sprint Regen", "weight-sprintReg"],
+        kb: ["Knockback", "weight-kb"],
         str: ["Força", "weight-str"],
         dex: ["Destreza", "weight-dex"],
         int: ["Inteligência", "weight-int"],
@@ -73,6 +87,7 @@
         poison: "Poison",
         thorns: "Thorns",
         expd: "XP Bonus %",
+        xpb: "XP Bonus",
         xpb: "XP Bonus",
         lb: "Loot Bonus %",
         jh: "Jump Height",
@@ -362,6 +377,13 @@
             name.textContent = statLabel(key);
             const amount = document.createElement("dd");
             amount.textContent = formatStatValue(key, value);
+            const numericValue = typeof value === "number"
+                ? value
+                : key === "atkTier" && value && typeof value === "object"
+                    ? Number(value.raw)
+                    : NaN;
+            if (numericValue > 0) amount.classList.add("positive");
+            else if (numericValue < 0) amount.classList.add("negative");
             row.append(name, amount);
             grid.append(row);
         }
